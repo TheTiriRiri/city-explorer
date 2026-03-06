@@ -6,7 +6,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # Default timeout for all external API calls (5 seconds per PRD)
-DEFAULT_TIMEOUT = httpx.Timeout(5.0, connect=5.0)
+DEFAULT_TIMEOUT = httpx.Timeout(10.0, connect=10.0)
 
 # Global shared client, managed via app lifespan
 _http_client: httpx.AsyncClient | None = None
