@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City Explorer</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-header__inner">
+        <span class="app-header__icon" aria-hidden="true">&#x1F310;</span>
+        <h1 class="app-header__title">City Explorer</h1>
+      </div>
+    </header>
+
+    <main class="app-main">
+
+      <!-- ============================== -->
+      <!-- STATE 1: Countries List        -->
+      <!-- ============================== -->
+      <template v-if="view === 'countries'">
+
+        <div class="search-bar">
+          <input
+            class="search-input"
+            type="text"
+            placeholder="Search countries..."
+            :value="countrySearch"
+            @input="onCountrySearchInput"
+            aria-label="Search countries"
+          />
+        </div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="spinner-overlay">
+          <div class="spinner" aria-label="Loading"></div>
+          <span class="spinner-overlay__text">Loading countries...</span>
+        </div>
+
+        <!-- Error -->
+        <div v-else-if="errorMsg" class="message-box message-box--error">
+          <div class="message-box__icon" aria-hidden="true">&#x26A0;</div>
+          <div class="message-box__title">Something went wrong</div>
+          <div class="message-box__text">{{ errorMsg }}</div>
+          <button v-if="retryFn" class="btn-retry" @click="handleRetry">
+            &#x21BB; Retry
+          </button>
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="countries.length === 0" class="message-box">
+          <div class="message-box__icon" aria-hidden="true">&#x1F50D;</div>
+          <div class="message-box__title">No countries found</div>
+          <div class="message-box__text">Try adjusting your search term.</div>
+        </div>
+
+        <!-- Grid -->
+        <div v-else class="country-grid">
+          <div
+            v-for="c in countries"
+            :key="c.code"
+            class="card country-card"
+            tabindex="0"
+            role="button"
+            :aria-label="'View cities in ' + c.name"
+            @click="goToCities(c)"
+            @keydown.enter="goToCities(c)"
+            @keydown.space.prevent="goToCities(c)"
+          >
+            <img
+              v-if="c.flag_url"
+              class="country-card__flag"
+              :src="c.flag_url"
+              :alt="c.name + ' flag'"
+              loading="lazy"
+            />
+            <div class="country-card__info">
+              <div class="country-card__name">{{ c.name }}</div>
+              <div class="country-card__detail">
+                <span v-if="c.capital">{{ c.capital }}</span>
+                <span v-if="c.capital && c.region"> &middot; </span>
+                <span v-if="c.region">{{ c.region }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ============================== -->
+      <!-- STATE 2: Cities List           -->
+      <!-- ============================== -->
+      <template v-if="view === 'cities'">
+
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <button class="breadcrumb__link" @click="goToCountries">Countries</button>
+          <span class="breadcrumb__sep" aria-hidden="true">&#x203A;</span>
+          <span class="breadcrumb__current">{{ countryName || selectedCountry.name }}</span>
+        </nav>
+
+        <button class="btn-back" @click="goToCountries">
+          &#x2190; Back to countries
+        </button>
+
+        <div class="search-bar">
+          <input
+            class="search-input"
+            type="text"
+            placeholder="Search cities..."
+            :value="citySearch"
+            @input="onCitySearchInput"
+            aria-label="Search cities"
+          />
+        </div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="spinner-overlay">
+          <div class="spinner" aria-label="Loading"></div>
+          <span class="spinner-overlay__text">Loading cities...</span>
+        </div>
+
+        <!-- Error -->
+        <div v-else-if="errorMsg" class="message-box message-box--error">
+          <div class="message-box__icon" aria-hidden="true">&#x26A0;</div>
+          <div class="message-box__title">Something went wrong</div>
+          <div class="message-box__text">{{ errorMsg }}</div>
+          <button v-if="retryFn" class="btn-retry" @click="handleRetry">
+            &#x21BB; Retry
+          </button>
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="cities.length === 0" class="message-box">
+          <div class="message-box__icon" aria-hidden="true">&#x1F3D9;</div>
+          <div class="message-box__title">No cities found</div>
+          <div class="message-box__text">Try adjusting your search or go back to countries.</div>
+        </div>
+
+        <!-- City list -->
+        <template v-else>
+          <div class="city-list">
+            <div
+              v-for="city in cities"
+              :key="city.name + city.latitude"
+              class="card city-card"
+              tabindex="0"
+              role="button"
+              :aria-label="'View profile of ' + city.name"
+              @click="goToCityProfile(city)"
+              @keydown.enter="goToCityProfile(city)"
+              @keydown.space.prevent="goToCityProfile(city)"
+            >
+              <div>
+                <div class="city-card__name">{{ city.name }}</div>
+                <div class="city-card__meta">
+                  <span v-if="city.population != null">Pop. {{ formatPopulation(city.population) }}</span>
+                  <span v-if="city.population != null && city.timezone"> &middot; </span>
+                  <span v-if="city.timezone">{{ city.timezone }}</span>
+                </div>
+              </div>
+              <span class="city-card__arrow" aria-hidden="true">&#x203A;</span>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination" v-if="totalCityPages > 1">
+            <button
+              class="pagination__btn"
+              :disabled="cityPage <= 1"
+              @click="prevPage"
+              aria-label="Previous page"
+            >
+              &#x2190; Prev
+            </button>
+            <span class="pagination__info">
+              Page {{ cityPage }} of {{ totalCityPages }}
+              ({{ cityTotal }} cities)
+            </span>
+            <button
+              class="pagination__btn"
+              :disabled="cityPage >= totalCityPages"
+              @click="nextPage"
+              aria-label="Next page"
+            >
+              Next &#x2192;
+            </button>
+          </div>
+        </template>
+      </template>
+
+      <!-- ============================== -->
+      <!-- STATE 3: City Profile          -->
+      <!-- ============================== -->
+      <template v-if="view === 'city'">
+
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <button class="breadcrumb__link" @click="goToCountries">Countries</button>
+          <span class="breadcrumb__sep" aria-hidden="true">&#x203A;</span>
+          <button class="breadcrumb__link" @click="goBackToCities">{{ countryName || selectedCountry.name }}</button>
+          <span class="breadcrumb__sep" aria-hidden="true">&#x203A;</span>
+          <span class="breadcrumb__current">{{ selectedCity ? selectedCity.name : '' }}</span>
+        </nav>
+
+        <button class="btn-back" @click="goBackToCities">
+          &#x2190; Back to cities
+        </button>
+
+        <!-- Loading -->
+        <div v-if="loading" class="spinner-overlay">
+          <div class="spinner" aria-label="Loading"></div>
+          <span class="spinner-overlay__text">Loading city profile...</span>
+        </div>
+
+        <!-- Error -->
+        <div v-else-if="errorMsg" class="message-box message-box--error">
+          <div class="message-box__icon" aria-hidden="true">&#x26A0;</div>
+          <div class="message-box__title">Something went wrong</div>
+          <div class="message-box__text">{{ errorMsg }}</div>
+          <button v-if="retryFn" class="btn-retry" @click="handleRetry">
+            &#x21BB; Retry
+          </button>
+        </div>
+
+        <!-- Profile -->
+        <div v-else-if="cityInfo" class="city-profile">
+
+          <!-- Header -->
+          <div class="city-profile__header">
+            <img
+              v-if="cityInfo.country_code"
+              class="city-profile__flag"
+              :src="flagUrl(cityInfo.country_code)"
+              :alt="cityInfo.country + ' flag'"
+            />
+            <div>
+              <h2 class="city-profile__title">{{ cityInfo.city }}</h2>
+              <div class="city-profile__subtitle">{{ cityInfo.country }}</div>
+            </div>
+          </div>
+
+          <!-- Warnings -->
+          <div v-if="cityInfo.warnings && cityInfo.warnings.length" class="warnings">
+            <div v-for="(w, i) in cityInfo.warnings" :key="i" class="warning-item">
+              <span class="warning-item__icon" aria-hidden="true">&#x26A0;&#xFE0F;</span>
+              <span>{{ w }}</span>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <section v-if="cityInfo.description" class="section-card">
+            <h3 class="section-card__heading">About</h3>
+            <div class="section-card__body">
+              <div class="description-layout">
+                <img
+                  v-if="cityInfo.description.thumbnail_url"
+                  class="description-layout__thumb"
+                  :src="cityInfo.description.thumbnail_url"
+                  :alt="cityInfo.city"
+                />
+                <div class="description-layout__text">
+                  {{ cityInfo.description.summary }}
+                  <a
+                    v-if="cityInfo.description.extract_url"
+                    class="description-layout__link"
+                    :href="cityInfo.description.extract_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Read more on Wikipedia &#x2197;
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Weather -->
+          <section v-if="cityInfo.weather" class="section-card">
+            <h3 class="section-card__heading">Current Weather</h3>
+            <div class="section-card__body">
+              <div class="weather-widget">
+                <div class="weather-widget__primary">
+                  <img
+                    v-if="cityInfo.weather.condition_icon"
+                    class="weather-widget__icon"
+                    :src="cityInfo.weather.condition_icon"
+                    :alt="cityInfo.weather.condition"
+                  />
+                  <div class="weather-widget__temp">
+                    {{ Math.round(cityInfo.weather.temperature_celsius) }}&deg;C
+                  </div>
+                  <div class="weather-widget__condition">{{ cityInfo.weather.condition }}</div>
+                  <div class="weather-widget__feels">
+                    Feels like {{ Math.round(cityInfo.weather.feels_like_celsius) }}&deg;C
+                  </div>
+                </div>
+                <div class="weather-widget__details">
+                  <div class="weather-detail">
+                    <span class="weather-detail__label">Humidity</span>
+                    <span class="weather-detail__value">{{ cityInfo.weather.humidity_percent }}%</span>
+                  </div>
+                  <div class="weather-detail">
+                    <span class="weather-detail__label">Wind</span>
+                    <span class="weather-detail__value">
+                      {{ cityInfo.weather.wind_speed_kmh }} km/h {{ cityInfo.weather.wind_direction }}
+                    </span>
+                  </div>
+                  <div class="weather-detail">
+                    <span class="weather-detail__label">Pressure</span>
+                    <span class="weather-detail__value">{{ cityInfo.weather.pressure_hpa }} hPa</span>
+                  </div>
+                  <div class="weather-detail" v-if="cityInfo.weather.visibility_km != null">
+                    <span class="weather-detail__label">Visibility</span>
+                    <span class="weather-detail__value">{{ cityInfo.weather.visibility_km }} km</span>
+                  </div>
+                  <div class="weather-detail">
+                    <span class="weather-detail__label">Sunrise</span>
+                    <span class="weather-detail__value">{{ cityInfo.weather.sunrise }}</span>
+                  </div>
+                  <div class="weather-detail">
+                    <span class="weather-detail__label">Sunset</span>
+                    <span class="weather-detail__value">{{ cityInfo.weather.sunset }}</span>
+                  </div>
+                  <div class="weather-detail" v-if="cityInfo.weather.uv_index != null">
+                    <span class="weather-detail__label">UV Index</span>
+                    <span class="weather-detail__value">{{ cityInfo.weather.uv_index }}</span>
+                  </div>
+                  <div class="weather-detail">
+                    <span class="weather-detail__label">Fahrenheit</span>
+                    <span class="weather-detail__value">
+                      {{ Math.round(cityInfo.weather.temperature_fahrenheit) }}&deg;F
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Famous People -->
+          <section v-if="cityInfo.famous_people && cityInfo.famous_people.length" class="section-card">
+            <h3 class="section-card__heading">Notable People</h3>
+            <div class="section-card__body">
+              <div class="people-list">
+                <div v-for="person in cityInfo.famous_people" :key="person.wikipedia_url" class="person-item">
+                  <div class="person-item__initial">{{ personInitial(person) }}</div>
+                  <div class="person-item__info">
+                    <div class="person-item__name">
+                      <a
+                        :href="person.wikipedia_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >{{ person.name }}</a>
+                      <span v-if="personYears(person)" class="person-item__years">{{ personYears(person) }}</span>
+                    </div>
+                    <div v-if="person.description" class="person-item__desc">{{ person.description }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </template>
+
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

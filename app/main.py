@@ -8,7 +8,8 @@ from typing import AsyncIterator
 
 import structlog
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -150,3 +151,16 @@ from app.routers import cities, city_info, countries  # noqa: E402
 app.include_router(countries.router)
 app.include_router(cities.router)
 app.include_router(city_info.router)
+
+
+# ---------------------------------------------------------------------------
+# SPA / static file serving (AFTER all API routes)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/", include_in_schema=False)
+async def serve_spa():
+    return FileResponse("static/index.html")
+
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
