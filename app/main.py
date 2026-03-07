@@ -146,7 +146,7 @@ async def health_check(request: Request) -> dict:
 # Include routers (imported here to avoid circular imports)
 # ---------------------------------------------------------------------------
 
-from app.routers import cities, city_info, compare, countries, photos, pois, timeline  # noqa: E402
+from app.routers import cities, city_info, compare, countries, photos, pois, random_city, timeline  # noqa: E402
 
 app.include_router(countries.router)
 app.include_router(cities.router)
@@ -155,6 +155,7 @@ app.include_router(compare.router)
 app.include_router(photos.router)
 app.include_router(timeline.router)
 app.include_router(pois.router)
+app.include_router(random_city.router)
 
 
 # ---------------------------------------------------------------------------
