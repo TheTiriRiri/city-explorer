@@ -35,7 +35,11 @@ async def city_timeline(
     if cached is not None:
         events = [HistoricalEvent(**e) for e in cached]
     else:
-        events = await get_city_timeline(client, city_name)
+        try:
+            events = await get_city_timeline(client, city_name)
+        except Exception:
+            logger.warning("timeline_fetch_failed", city_name=city_name, exc_info=True)
+            events = []
         await cache_set(
             cache_key,
             [e.model_dump(mode="json") for e in events],

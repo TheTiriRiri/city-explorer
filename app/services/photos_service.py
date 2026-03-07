@@ -1,5 +1,7 @@
 """Wikimedia Commons photo service for city images."""
 
+import re
+
 import httpx
 import structlog
 
@@ -85,7 +87,6 @@ async def _fetch_image_info(
         extmetadata = info.get("extmetadata", {})
         description = extmetadata.get("ImageDescription", {}).get("value", "") or ""
         # Strip HTML tags from description
-        import re
         clean_desc = re.sub(r"<[^>]+>", "", description).strip()
         if len(clean_desc) > 300:
             clean_desc = clean_desc[:297] + "..."

@@ -37,7 +37,11 @@ async def city_photos(
     if cached is not None:
         photos = [Photo(**p) for p in cached]
     else:
-        photos = await get_city_photos(client, city_name, limit=limit)
+        try:
+            photos = await get_city_photos(client, city_name, limit=limit)
+        except Exception:
+            logger.warning("photos_fetch_failed", city_name=city_name, exc_info=True)
+            photos = []
         await cache_set(
             cache_key,
             [p.model_dump(mode="json") for p in photos],

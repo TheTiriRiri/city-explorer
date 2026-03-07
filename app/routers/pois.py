@@ -38,7 +38,11 @@ async def city_pois(
     if cached is not None:
         pois = [PointOfInterest(**p) for p in cached]
     else:
-        pois = await get_city_pois(client, lat, lon)
+        try:
+            pois = await get_city_pois(client, lat, lon)
+        except Exception:
+            logger.warning("pois_fetch_failed", lat=lat, lon=lon, exc_info=True)
+            pois = []
         await cache_set(
             cache_key,
             [p.model_dump(mode="json") for p in pois],

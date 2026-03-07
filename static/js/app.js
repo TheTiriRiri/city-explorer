@@ -242,6 +242,20 @@ const app = createApp({
     }
 
     /* ---- Navigation ---- */
+    function clearEnrichment() {
+      photos.value = [];
+      photosLoading.value = false;
+      photosError.value = "";
+      photoFilter.value = "all";
+      timeline.value = [];
+      timelineLoading.value = false;
+      timelineError.value = "";
+      pois.value = [];
+      poisLoading.value = false;
+      poisError.value = "";
+      poiFilter.value = "all";
+    }
+
     function goToCountries() {
       view.value = "countries";
       selectedCountry.value = null;
@@ -251,6 +265,7 @@ const app = createApp({
       citySearch.value = "";
       cityPage.value = 1;
       errorMsg.value = "";
+      clearEnrichment();
       fetchCountries();
     }
 
@@ -266,6 +281,7 @@ const app = createApp({
       citySearch.value = "";
       cityPage.value = 1;
       errorMsg.value = "";
+      clearEnrichment();
       fetchCities();
     }
 
@@ -281,6 +297,7 @@ const app = createApp({
       selectedCity.value = null;
       cityInfo.value = null;
       errorMsg.value = "";
+      clearEnrichment();
       fetchCities();
     }
 
