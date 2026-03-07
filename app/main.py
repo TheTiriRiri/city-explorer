@@ -156,6 +156,7 @@ app.include_router(nearby.router)
 app.include_router(photos.router)
 app.include_router(timeline.router)
 app.include_router(pois.router)
+app.include_router(random_city.router)
 
 
 # ---------------------------------------------------------------------------
