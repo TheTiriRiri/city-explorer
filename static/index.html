@@ -363,6 +363,102 @@
             </div>
           </section>
 
+          <!-- Photo Gallery -->
+          <section class="section-card">
+            <h3 class="section-card__heading">Photo Gallery</h3>
+            <div class="section-card__body">
+              <div v-if="photosLoading" class="section-spinner">
+                <div class="spinner spinner--small" aria-label="Loading photos"></div>
+                <span>Loading photos...</span>
+              </div>
+              <div v-else-if="photosError" class="section-error">{{ photosError }}</div>
+              <template v-else-if="photos.length">
+                <div class="filter-bar" v-if="photoCategories.length > 1">
+                  <button
+                    v-for="cat in photoCategories"
+                    :key="cat"
+                    class="filter-btn"
+                    :class="{ 'filter-btn--active': photoFilter === cat }"
+                    @click="photoFilter = cat"
+                  >{{ cat }}</button>
+                </div>
+                <div class="photo-grid">
+                  <a
+                    v-for="photo in filteredPhotos"
+                    :key="photo.url"
+                    class="photo-grid__item"
+                    :href="photo.commons_url || photo.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      :src="photo.thumbnail_url || photo.url"
+                      :alt="photo.title"
+                      loading="lazy"
+                    />
+                    <div class="photo-grid__caption">{{ photo.title }}</div>
+                  </a>
+                </div>
+              </template>
+              <div v-else class="section-empty">No photos found for this city.</div>
+            </div>
+          </section>
+
+          <!-- Historical Timeline -->
+          <section class="section-card">
+            <h3 class="section-card__heading">Historical Timeline</h3>
+            <div class="section-card__body">
+              <div v-if="timelineLoading" class="section-spinner">
+                <div class="spinner spinner--small" aria-label="Loading timeline"></div>
+                <span>Loading timeline...</span>
+              </div>
+              <div v-else-if="timelineError" class="section-error">{{ timelineError }}</div>
+              <div v-else-if="timeline.length" class="timeline">
+                <div v-for="event in timeline" :key="event.year + event.event" class="timeline__item">
+                  <div class="timeline__year">{{ event.year }}</div>
+                  <div class="timeline__event">{{ event.event }}</div>
+                </div>
+              </div>
+              <div v-else class="section-empty">No historical timeline available.</div>
+            </div>
+          </section>
+
+          <!-- Points of Interest -->
+          <section class="section-card">
+            <h3 class="section-card__heading">Points of Interest</h3>
+            <div class="section-card__body">
+              <div v-if="poisLoading" class="section-spinner">
+                <div class="spinner spinner--small" aria-label="Loading POIs"></div>
+                <span>Loading points of interest...</span>
+              </div>
+              <div v-else-if="poisError" class="section-error">{{ poisError }}</div>
+              <template v-else-if="pois.length">
+                <div class="filter-bar" v-if="poiCategories.length > 1">
+                  <button
+                    v-for="cat in poiCategories"
+                    :key="cat"
+                    class="filter-btn"
+                    :class="{ 'filter-btn--active': poiFilter === cat }"
+                    @click="poiFilter = cat"
+                  >{{ cat }}</button>
+                </div>
+                <div class="poi-list">
+                  <div v-for="poi in filteredPois" :key="poi.osm_id || poi.name" class="poi-item">
+                    <div class="poi-item__icon">{{ poiIcon(poi.category) }}</div>
+                    <div class="poi-item__info">
+                      <div class="poi-item__name">{{ poi.name }}</div>
+                      <div class="poi-item__meta">
+                        <span class="poi-item__category">{{ poi.category }}</span>
+                        <span v-if="poi.distance_km != null"> &middot; {{ poi.distance_km }} km</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="section-empty">No points of interest found nearby.</div>
+            </div>
+          </section>
+
         </div>
       </template>
 
