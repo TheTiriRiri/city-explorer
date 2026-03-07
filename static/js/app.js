@@ -54,6 +54,21 @@ const app = createApp({
     const selectedCity = ref(null); // { name }
     const cityInfo = ref(null);
 
+    // Enrichment: photos, timeline, POIs
+    const photos = ref([]);
+    const photosLoading = ref(false);
+    const photosError = ref("");
+    const photoFilter = ref("all");
+
+    const timeline = ref([]);
+    const timelineLoading = ref(false);
+    const timelineError = ref("");
+
+    const pois = ref([]);
+    const poisLoading = ref(false);
+    const poisError = ref("");
+    const poiFilter = ref("all");
+
     // Retry context
     const retryFn = ref(null);
 
@@ -61,6 +76,26 @@ const app = createApp({
     const totalCityPages = computed(() =>
       Math.max(1, Math.ceil(cityTotal.value / cityPerPage.value))
     );
+
+    const photoCategories = computed(() => {
+      const cats = new Set(photos.value.map(p => p.category));
+      return ["all", ...Array.from(cats).sort()];
+    });
+
+    const filteredPhotos = computed(() => {
+      if (photoFilter.value === "all") return photos.value;
+      return photos.value.filter(p => p.category === photoFilter.value);
+    });
+
+    const poiCategories = computed(() => {
+      const cats = new Set(pois.value.map(p => p.category));
+      return ["all", ...Array.from(cats).sort()];
+    });
+
+    const filteredPois = computed(() => {
+      if (poiFilter.value === "all") return pois.value;
+      return pois.value.filter(p => p.category === poiFilter.value);
+    });
 
     /* ---- API helpers ---- */
     async function apiFetch(url) {
@@ -140,11 +175,69 @@ const app = createApp({
         const url = `/city/${encodeURIComponent(name)}/info?country_code=${encodeURIComponent(code)}`;
         const data = await apiFetch(url);
         cityInfo.value = data;
+        // Trigger lazy loading of enrichment data
+        fetchEnrichmentData(name, data.coordinates);
       } catch (e) {
         errorMsg.value = e.message || "Failed to load city information.";
         retryFn.value = fetchCityInfo;
       } finally {
         loading.value = false;
+      }
+    }
+
+    /* ---- Enrichment: lazy-loaded sections ---- */
+    function fetchEnrichmentData(cityName, coordinates) {
+      // Reset state
+      photos.value = [];
+      photosError.value = "";
+      photoFilter.value = "all";
+      timeline.value = [];
+      timelineError.value = "";
+      pois.value = [];
+      poisError.value = "";
+      poiFilter.value = "all";
+
+      // Fetch all three in parallel
+      fetchPhotos(cityName);
+      fetchTimeline(cityName);
+      if (coordinates && coordinates.latitude && coordinates.longitude) {
+        fetchPois(cityName, coordinates.latitude, coordinates.longitude);
+      }
+    }
+
+    async function fetchPhotos(cityName) {
+      photosLoading.value = true;
+      try {
+        const data = await apiFetch(`/city/${encodeURIComponent(cityName)}/photos?limit=12`);
+        photos.value = data.photos || [];
+      } catch (e) {
+        photosError.value = "Failed to load photos.";
+      } finally {
+        photosLoading.value = false;
+      }
+    }
+
+    async function fetchTimeline(cityName) {
+      timelineLoading.value = true;
+      try {
+        const data = await apiFetch(`/city/${encodeURIComponent(cityName)}/timeline`);
+        timeline.value = data.events || [];
+      } catch (e) {
+        timelineError.value = "Failed to load timeline.";
+      } finally {
+        timelineLoading.value = false;
+      }
+    }
+
+    async function fetchPois(cityName, lat, lon) {
+      poisLoading.value = true;
+      try {
+        const data = await apiFetch(`/city/${encodeURIComponent(cityName)}/pois?lat=${lat}&lon=${lon}`);
+        pois.value = data.pois || [];
+      } catch (e) {
+        poisError.value = "Failed to load points of interest.";
+      } finally {
+        poisLoading.value = false;
       }
     }
 
@@ -251,6 +344,18 @@ const app = createApp({
       return `https://flagcdn.com/${code.toLowerCase()}.svg`;
     }
 
+    function poiIcon(category) {
+      const icons = {
+        museum: "\u{1F3DB}",
+        attraction: "\u{2B50}",
+        monument: "\u{1F3F0}",
+        park: "\u{1F333}",
+        religious: "\u{26EA}",
+        restaurant: "\u{1F37D}",
+      };
+      return icons[category] || "\u{1F4CD}";
+    }
+
     /* ---- Init ---- */
     onMounted(() => {
       fetchCountries();
@@ -273,6 +378,23 @@ const app = createApp({
       cityInfo,
       totalCityPages,
       retryFn,
+      // Enrichment
+      photos,
+      photosLoading,
+      photosError,
+      photoFilter,
+      photoCategories,
+      filteredPhotos,
+      timeline,
+      timelineLoading,
+      timelineError,
+      pois,
+      poisLoading,
+      poisError,
+      poiFilter,
+      poiCategories,
+      filteredPois,
+      // Methods
       fetchCountries,
       fetchCities,
       fetchCityInfo,
@@ -288,6 +410,7 @@ const app = createApp({
       personYears,
       personInitial,
       flagUrl,
+      poiIcon,
       formatPopulation,
       escapeHtml,
     };

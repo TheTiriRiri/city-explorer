@@ -26,6 +26,8 @@ def test_settings() -> Settings:
         cache_ttl_cities=60,
         cache_ttl_wiki=60,
         cache_ttl_weather=60,
+        cache_ttl_photos=60,
+        cache_ttl_pois=60,
     )
 
 

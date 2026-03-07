@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     cache_ttl_cities: int = 43200
     cache_ttl_wiki: int = 86400
     cache_ttl_weather: int = 600
+    cache_ttl_photos: int = 86400
+    cache_ttl_pois: int = 43200
 
     @property
     def is_production(self) -> bool:
